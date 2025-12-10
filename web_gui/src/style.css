@@ -1,0 +1,302 @@
+:root {
+    --bg-dark: #0f1115;
+    --bg-panel: #161b22;
+    --bg-input: #0d1117;
+    --border: #30363d;
+    --primary: #58a6ff;
+    --primary-hover: #79c0ff;
+    --secondary: #238636;
+    --secondary-hover: #2ea043;
+    --text-main: #c9d1d9;
+    --text-muted: #8b949e;
+    --accent: #d2a8ff;
+    --error: #f85149;
+    --success: #3fb950;
+
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+    font-family: var(--font-sans);
+    height: 100vh;
+    overflow: hidden;
+}
+
+.app-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+/* Header */
+header {
+    height: 60px;
+    background-color: var(--bg-panel);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--text-main);
+}
+
+.logo svg {
+    color: var(--primary);
+}
+
+.logo h1 {
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: var(--error);
+    /* Default to red/loading */
+    transition: background-color 0.3s;
+}
+
+.status-indicator.ready .dot {
+    background-color: var(--success);
+    box-shadow: 0 0 8px rgba(63, 185, 80, 0.4);
+}
+
+/* Main Layout */
+main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+.control-panel {
+    width: 320px;
+    background-color: var(--bg-panel);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    gap: 24px;
+    overflow-y: auto;
+}
+
+.panel-section h2 {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+}
+
+.input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.input-group label {
+    font-size: 13px;
+    color: var(--text-main);
+}
+
+input[type="text"] {
+    background-color: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 12px;
+    color: var(--text-main);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+input[type="text"]:focus {
+    border-color: var(--primary);
+}
+
+.button-group {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+button {
+    flex: 1;
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: 1px solid rgba(240, 246, 252, 0.1);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+button.primary {
+    background-color: var(--primary);
+    color: #fff;
+    border: none;
+}
+
+button.primary:hover {
+    background-color: var(--primary-hover);
+}
+
+button.secondary {
+    background-color: var(--bg-input);
+    color: var(--text-main);
+}
+
+button.secondary:hover {
+    background-color: var(--border);
+}
+
+button.action {
+    background-color: transparent;
+    border-color: var(--border);
+    color: var(--primary);
+}
+
+button.action:hover {
+    border-color: var(--primary);
+}
+
+/* Console */
+.console {
+    background-color: #000;
+    border-radius: 6px;
+    padding: 10px;
+    height: 150px;
+    overflow-y: auto;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    border: 1px solid var(--border);
+}
+
+.log-entry {
+    margin-bottom: 4px;
+    line-height: 1.4;
+}
+
+.log-entry.system {
+    color: var(--text-muted);
+}
+
+.log-entry.success {
+    color: var(--success);
+}
+
+.log-entry.error {
+    color: var(--error);
+}
+
+.log-entry.info {
+    color: var(--primary);
+}
+
+/* Visualization Area */
+.visualization-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--bg-dark);
+}
+
+.tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    background-color: var(--bg-panel);
+}
+
+.tab {
+    padding: 12px 24px;
+    background: none;
+    border: none;
+    border-right: 1px solid var(--border);
+    color: var(--text-muted);
+    cursor: pointer;
+    border-radius: 0;
+}
+
+.tab.active {
+    color: var(--text-main);
+    background-color: var(--bg-dark);
+    border-bottom: 2px solid var(--primary);
+}
+
+.viewport {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.graph-view {
+    display: none;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+}
+
+.graph-view.active {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.placeholder {
+    color: var(--text-muted);
+    font-size: 14px;
+}
+
+/* Graphviz SVG Styling */
+svg {
+    max-width: 100%;
+    max-height: 100%;
+}
+
+.node polygon {
+    fill: var(--bg-panel);
+    stroke: var(--primary);
+}
+
+.node text {
+    fill: var(--text-main);
+    font-family: var(--font-sans);
+}
+
+.edge path {
+    stroke: var(--text-muted);
+}
+
+.edge polygon {
+    fill: var(--text-muted);
+    stroke: var(--text-muted);
+}

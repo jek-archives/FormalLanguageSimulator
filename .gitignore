@@ -1,0 +1,14 @@
+# System files
+.DS_Store
+.vscode/
+
+# Build dependencies
+emsdk/
+node_modules/
+
+# Build artifacts (optional, keeping wasm for now as requested for easy deployment)
+# web_gui/public/wasm/
+
+# Temporary files
+*.tmp
+*.log
