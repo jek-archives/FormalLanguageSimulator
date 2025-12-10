@@ -6,6 +6,7 @@ const AppState = {
     currentDFA: null,
     activeDiagram: 'nfa', // 'nfa' or 'dfa'
     activeLog: 'nfa',     // 'nfa' or 'dfa'
+    pdaMode: 'a^nb^n',      // 'anbn' or 'balanced'
     regex: '(a|b)*abb',
     testString: 'abb',
     dnaSequence: 'ball',
@@ -37,7 +38,8 @@ const AppState = {
             testString: this.testString,
             dnaSequence: this.dnaSequence,
             maxErrors: this.maxErrors,
-            pdaInput: this.pdaInput
+            pdaInput: this.pdaInput,
+            pdaMode: this.pdaMode
         };
         localStorage.setItem('formalSimState', JSON.stringify(state));
     },
@@ -104,6 +106,7 @@ const AppState = {
                 if (state.dnaSequence) this.dnaSequence = state.dnaSequence;
                 if (state.maxErrors) this.maxErrors = state.maxErrors;
                 if (state.pdaInput) this.pdaInput = state.pdaInput;
+                if (state.pdaMode) this.pdaMode = state.pdaMode;
 
                 // Update UI
                 document.getElementById('regex-input-field').value = this.regex || '';
@@ -112,6 +115,14 @@ const AppState = {
                 document.getElementById('max-errors-field').value = this.maxErrors || 1;
                 document.getElementById('k-value-display').innerText = this.maxErrors || 1;
                 document.getElementById('pda-input-field').value = this.pdaInput || '';
+
+                // Update PDA Mode UI
+                const modeSelect = document.getElementById('pda-mode-select');
+                if (this.pdaMode && modeSelect) {
+                    modeSelect.value = this.pdaMode;
+                    // Trigger mode update logic (desc etc)
+                    this.setPdaMode(this.pdaMode);
+                }
 
             } catch (e) { console.error("Error loading state", e); }
         }
@@ -263,7 +274,7 @@ const AppState = {
             resultDiv.className = 'p-3 bg-gray-800 rounded border border-gray-700 mb-2';
             resultDiv.innerHTML = `
             <div class="flex justify-between items-center mb-1">
-                <span class="text-xs font-bold text-green-400">EXACT MATCH (DFA)</span>
+                <span class="text-xs font-bold text-green-400">TEST MATCH (DFA)</span>
                 <span class="font-bold border px-2 py-0.5 rounded text-xs ${isMatch ? 'text-green-400 border-green-500/30 bg-green-500/10' : 'text-red-400 border-red-500/30 bg-red-500/10'}">
                     ${isMatch ? 'MATCH' : 'NO MATCH'}
                 </span>
@@ -321,6 +332,7 @@ const AppState = {
 
     handlePdaInputChange: function (val) {
         this.pdaInput = val;
+        this.saveState();
     },
 
     usePdaExample: function (str) {
@@ -329,56 +341,113 @@ const AppState = {
         this.runPdaSimulation();
     },
 
-    runPdaSimulation: function () {
-        this.clearError();
-        if (!this.wasmModule) return;
-        const input = this.pdaInput || '';
+    setPdaMode: function (mode) {
+        this.pdaMode = mode;
+        const desc = document.getElementById('pda-desc');
+        if (mode === 'anbn') {
+            desc.innerHTML = `Simulates <b>a<sup>n</sup>b<sup>n</sup></b> context-free language.`;
+            document.getElementById('pda-input-field').placeholder = "e.g. aaabbb";
+        } else {
+            desc.innerHTML = `Checks for <b>Balanced Parentheses</b> (XML/RNA Structure).`;
+            document.getElementById('pda-input-field').placeholder = "e.g. ((()))";
+        }
+    },
 
+    setBioPreset: function (type) {
+        let pattern = "";
+        if (type === 'START') pattern = 'ATG'; // Start Codon
+        if (type === 'TATA') pattern = 'TATA(A|T)A(A|T)'; // TATA Box (Promoter)
+        if (type === 'POLYA') pattern = 'AAAA*'; // Poly-A Tail
+
+        this.handleRegexChange(pattern);
+        document.getElementById('regex-input-field').value = pattern;
+    },
+
+    runPdaSimulation: function () {
+        const input = this.pdaInput || "";
+        // Redirect to Main Execution Log
         const resultsContainer = document.getElementById('test-results-content');
         resultsContainer.style.display = 'block';
         document.getElementById('results-panel-empty').style.display = 'none';
 
-        const resultDiv = document.createElement('div');
-        resultDiv.className = 'p-3 bg-gray-800 rounded border border-gray-700 mb-2';
-
         try {
-            // Call WASM
-            const result = this.wasmModule.simulatePDA(input);
-            const accepted = result.accepted;
-            const log = result.log; // vector<string> -> JS Array
+            let resultHtml = "";
+            let isAccepted = false;
+            let stackTrace = "";
 
-            // Format Log
-            let logHtml = '<div class="mt-2 pl-2 border-l-2 border-gray-600 text-xs text-gray-400 font-mono">';
-            for (let i = 0; i < log.size(); i++) {
-                logHtml += `<div>${log.get(i)}</div>`;
+            if (this.pdaMode === 'balanced') {
+                // simple JS simulation for Balanced Parentheses
+                let stack = [];
+                let trace = [];
+                let failed = false;
+
+                trace.push(`Start: Stack []`);
+
+                for (let i = 0; i < input.length; i++) {
+                    const char = input[i];
+                    if (char === '(') {
+                        stack.push('(');
+                        trace.push(`Read '(': Push '('. Stack: [${stack.join('')}]`);
+                    } else if (char === ')') {
+                        if (stack.length === 0) {
+                            trace.push(`Read ')': Error (Empty Stack). REJECT.`);
+                            failed = true;
+                            break;
+                        }
+                        stack.pop();
+                        trace.push(`Read ')': Pop '('. Stack: [${stack.join('')}]`);
+                    } else {
+                        trace.push(`Read '${char}': Ignore/Skip.`);
+                    }
+                }
+
+                if (!failed && stack.length === 0) {
+                    isAccepted = true;
+                    trace.push(`End: Stack Empty. ACCEPT.`);
+                } else if (!failed) {
+                    trace.push(`End: Stack [${stack.join('')}] (Not Empty). REJECT.`);
+                }
+
+                stackTrace = trace.join('\n');
+
+            } else {
+                // Default: a^n b^n (WASM)
+                if (this.wasmModule) {
+                    const result = this.wasmModule.simulatePDA(input);
+                    // result is { accepted: bool, log: vector<string> }
+                    isAccepted = result.accepted;
+
+                    // Convert vector to string
+                    const logVec = result.log;
+                    let traceLines = [];
+                    for (let i = 0; i < logVec.size(); i++) {
+                        traceLines.push(logVec.get(i));
+                    }
+                    stackTrace = traceLines.join('\n');
+                }
             }
-            logHtml += '</div>';
 
+            const resultBadge = isAccepted
+                ? '<span class="px-2 py-0.5 rounded bg-green-500/20 text-green-400 font-bold border border-green-500/30">ACCEPTED</span>'
+                : '<span class="px-2 py-0.5 rounded bg-red-500/20 text-red-400 font-bold border border-red-500/30">REJECTED</span>';
+
+            const resultDiv = document.createElement('div');
+            resultDiv.className = 'bg-gray-800 rounded border border-gray-700 mb-2 overflow-hidden';
             resultDiv.innerHTML = `
-                <div class="flex justify-between items-center mb-1">
-                <span class="text-xs font-bold text-purple-400">PDA SIMULATION (a<sup>n</sup>b<sup>n</sup>)</span>
-                <span class="font-bold border px-2 py-0.5 rounded text-xs ${accepted ? 'text-green-400 border-green-500/30 bg-green-500/10' : 'text-red-400 border-red-500/30 bg-red-500/10'}">
-                    ${accepted ? 'ACCEPTED' : 'REJECTED'}
-                </span>
-            </div>
-                <div class="text-sm text-gray-300">
-                    <div>Input: "${input}"</div>
+                <div class="px-3 py-2 bg-gray-900 border-b border-gray-800 flex justify-between items-center">
+                    <span class="text-xs bg-gray-700 text-gray-300 px-1.5 rounded font-mono">
+                        <span class="text-orange-400 font-bold mr-2">PDA (${this.pdaMode})</span> "${input}"
+                    </span>
+                    ${resultBadge}
                 </div>
-                ${logHtml}
+                <div class="p-2 text-[10px] font-mono text-gray-400 whitespace-pre-wrap max-h-32 overflow-y-auto custom-scrollbar">${stackTrace}</div>
             `;
-
-            // Clean up vector view if needed, though Emscripten handles small return by value well.
-            // But 'log' depends on how vector is bound. register_vector("StringList") was used.
-            // We should call .delete() if we own it, but here it's property of returned object.
-            // Actually, simulatePDAWrapper returns object by value. 
-            // We'll let JS GC handle it unless it's a raw pointer. 
 
             resultsContainer.insertBefore(resultDiv, resultsContainer.firstChild);
 
         } catch (e) {
             console.error(e);
-            resultDiv.innerHTML = `<span class="text-red-500">Error: ${e.message}</span>`;
-            resultsContainer.insertBefore(resultDiv, resultsContainer.firstChild);
+            this.logError("PDA Error: " + e.message);
         }
     },
 
@@ -455,6 +524,9 @@ const AppState = {
 
             if (!dotString) return;
 
+            // format DOT to use q0, q1...
+            dotString = this.formatDotString(dotString);
+
             const viz = new Viz();
             viz.renderSVGElement(dotString)
                 .then(element => {
@@ -478,24 +550,25 @@ const AppState = {
         this.activeLog = type;
         const nfaTab = document.getElementById('nfa-log-tab');
         const dfaTab = document.getElementById('dfa-log-tab');
+        const grammarTab = document.getElementById('grammar-log-tab');
 
         // Log tabs are text-based: text-blue-400 font-bold VS text-gray-500 hover:text-gray-300
         const activeClass = ['text-blue-400', 'font-bold'];
         const inactiveClass = ['text-gray-500', 'hover:text-gray-300'];
 
-        if (type === 'nfa') {
-            nfaTab.classList.add(...activeClass);
-            nfaTab.classList.remove(...inactiveClass);
+        const setTabState = (tab, isActive) => {
+            if (isActive) {
+                tab.classList.add(...activeClass);
+                tab.classList.remove(...inactiveClass);
+            } else {
+                tab.classList.remove(...activeClass);
+                tab.classList.add(...inactiveClass);
+            }
+        };
 
-            dfaTab.classList.remove(...activeClass);
-            dfaTab.classList.add(...inactiveClass);
-        } else {
-            dfaTab.classList.add(...activeClass);
-            dfaTab.classList.remove(...inactiveClass);
-
-            nfaTab.classList.remove(...activeClass);
-            nfaTab.classList.add(...inactiveClass);
-        }
+        setTabState(nfaTab, type === 'nfa');
+        setTabState(dfaTab, type === 'dfa');
+        setTabState(grammarTab, type === 'grammar');
 
         this.updateTransitionsPanel();
     },
@@ -517,19 +590,36 @@ const AppState = {
         emptyEl.style.display = 'none';
         contentEl.style.display = 'flex'; // Flex for column layout
 
-        titleEl.textContent = this.activeLog.toUpperCase() + " Transitions";
-
         let dot = "";
         try {
-            if (this.activeLog === 'nfa' && this.currentNFA) {
+            // For Grammar, match the Active Diagram (NFA or DFA)
+            // Otherwise use the tab's type (nfa/dfa)
+            const targetType = (this.activeLog === 'grammar') ? this.activeDiagram : this.activeLog;
+
+            // Update title to be specific
+            if (this.activeLog === 'grammar') {
+                titleEl.textContent = `${targetType.toUpperCase()} GRAMMAR PRODUCTION RULES`;
+            } else {
+                titleEl.textContent = targetType.toUpperCase() + " TRANSITIONS";
+            }
+
+            if (targetType === 'nfa' && this.currentNFA) {
                 dot = this.wasmModule.generateDOT_NFA(this.currentNFA);
-            } else if (this.activeLog === 'dfa' && this.currentDFA) {
+            } else if (targetType === 'dfa' && this.currentDFA) {
                 dot = this.wasmModule.generateDOT_DFA(this.currentDFA);
             }
         } catch (e) { }
 
         if (!dot) {
             listEl.innerHTML = '<div class="text-gray-500 p-2">Not available</div>';
+            return;
+        }
+
+        // Apply formatting globally
+        dot = this.formatDotString(dot);
+
+        if (this.activeLog === 'grammar') {
+            this.updateGrammarPanel(dot);
             return;
         }
 
@@ -595,10 +685,117 @@ const AppState = {
         ).join('') || '--';
     },
 
+    updateGrammarPanel: function (dot) {
+        const listEl = document.getElementById('transition-list-container');
+        const startStateEl = document.getElementById('start-state-output');
+        const finalStatesEl = document.getElementById('final-states-output');
+
+        if (!dot) {
+            listEl.innerHTML = '<div class="text-gray-500 p-2">Not available</div>';
+            return;
+        }
+
+        const lines = dot.split('\n');
+        let rules = [];
+        let startState = '--';
+        let finalStates = [];
+
+        // Helper to format state names (0 -> q0)
+        const formatState = (s) => (s && !s.startsWith('q') && !isNaN(s)) ? `q${s}` : s;
+
+        // Regex parsing
+        const transitionRegex = /(\w+)\s*->\s*(\w+)\s*\[label="([^"]+)"\]/;
+        const finalRegex = /(\w+)\s*\[shape=doublecircle\]/;
+        const startRegex = /start\s*->\s*(\w+)/;
+
+        lines.forEach(line => {
+            let match = line.match(transitionRegex);
+            if (match) {
+                const [_, from, to, label] = match;
+                // Production Rule: FROM -> input TO
+                // e.g. Q0 -> aQ1
+
+                // Clean up label if it's epsilon or complex
+                let symbol = label;
+                if (symbol === 'ε') symbol = '';
+
+                rules.push({ from: formatState(from), to: formatState(to), symbol });
+            }
+
+            match = line.match(finalRegex);
+            if (match) {
+                finalStates.push(formatState(match[1]));
+            }
+
+            match = line.match(startRegex);
+            if (match) {
+                startState = formatState(match[1]);
+            }
+        });
+
+        // Base rules
+        let htmlContent = '';
+
+        // Group by FROM state
+        const rulesByState = {};
+        rules.forEach(r => {
+            if (!rulesByState[r.from]) rulesByState[r.from] = [];
+            rulesByState[r.from].push(`${r.symbol}<strong class="text-white">${r.to}</strong>`);
+        });
+
+        // Also add epsilon rules for Final States: Q_final -> ε
+        finalStates.forEach(fs => {
+            if (!rulesByState[fs]) rulesByState[fs] = [];
+            rulesByState[fs].push('ε');
+        });
+
+        // Render Logic
+        let rows = '';
+        // Sort keys to ensure q0, q1 order
+        Object.keys(rulesByState).sort().forEach(state => {
+            const productions = rulesByState[state];
+            rows += `
+                <div class="flex items-baseline border-b border-gray-800 last:border-0 py-2 hover:bg-gray-900 px-2 transition-colors">
+                    <div class="w-16 font-bold text-gray-300 text-right mr-3">${state}</div>
+                    <div class="text-gray-500 mr-3">→</div>
+                    <div class="flex-grow font-mono text-blue-400">
+                        ${productions.join('<span class="text-gray-600 mx-2">|</span>')}
+                    </div>
+                </div>
+            `;
+        });
+
+        listEl.innerHTML = `<div class="p-2 space-y-1">${rows}</div>`;
+
+        // Update Info
+        startStateEl.textContent = startState;
+        finalStatesEl.innerHTML = finalStates.map(fs =>
+            `<span class="inline-block bg-red-500/10 text-red-400 border border-red-500/20 px-1.5 py-0.5 rounded text-[10px] font-mono mr-1 mb-1">${fs}</span>`
+        ).join('') || '--';
+    },
+
+    formatDotString: function (dot) {
+        if (!dot) return dot;
+        // Replace numeric states 0, 1 with q0, q1
+        // We look for numbers that are NOT part of a label="quoted string" if possible.
+        // But our node IDs are just digits. 
+        // Safer approach: 
+        // 1. "0 -> 1" => "q0 -> q1"
+        // 2. "0 [shape" => "q0 [shape"
+        // 3. "start -> 0" => "start -> q0"
+
+        // This regex targets digits that are whole words
+        // We must be careful not to replace digits inside labels if we can avoid it.
+        // Given our C++ output is simple, we can probably get away with replacing all \b\d+\b that are not labels.
+        // Actually, labels are usually letters. 
+
+        return dot.replace(/\b(\d+)\b/g, 'q$1');
+    },
+
     clearError: function () {
         const el = document.getElementById('error-container');
         el.style.display = 'none';
-        document.getElementById('error-message-text').innerText = '';
+        document.getElementById('error-message-text').textContent = '';
     },
 
     logError: function (msg) {
