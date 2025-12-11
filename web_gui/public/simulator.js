@@ -13,7 +13,7 @@ const AppState = {
     maxErrors: 1,
 
     init: async function () {
-        console.log("Initializing App...");
+        console.log("Initializing App... Version: UI_UPDATE_2");
         try {
             if (typeof createFormalSimModule === 'undefined') {
                 this.logError("WASM module not found. Please compile the project.");
@@ -270,17 +270,26 @@ const AppState = {
             // Run simulation for Result
             let isMatch = this.currentDFA.simulate(this.testString);
 
+            const resultBadge = isMatch
+                ? '<span class="px-2 py-0.5 rounded bg-green-500/20 text-green-400 text-[10px] font-bold border border-green-500/30 tracking-wide">MATCH</span>'
+                : '<span class="px-2 py-0.5 rounded bg-red-500/20 text-red-400 text-[10px] font-bold border border-red-500/30 tracking-wide">NO MATCH</span>';
+
             const resultDiv = document.createElement('div');
-            resultDiv.className = 'p-3 bg-gray-800 rounded border border-gray-700 mb-2';
+            resultDiv.className = 'bg-gray-800 rounded-lg border border-gray-700 mb-3 overflow-hidden shadow-sm';
             resultDiv.innerHTML = `
-            <div class="flex justify-between items-center mb-1">
-                <span class="text-xs font-bold text-green-400">TEST MATCH (DFA)</span>
-                <span class="font-bold border px-2 py-0.5 rounded text-xs ${isMatch ? 'text-green-400 border-green-500/30 bg-green-500/10' : 'text-red-400 border-red-500/30 bg-red-500/10'}">
-                    ${isMatch ? 'MATCH' : 'NO MATCH'}
-                </span>
-            </div>
-            <div class="text-sm text-gray-300">"${this.testString}"</div>
-        `;
+                <div class="px-3 py-2 bg-gray-900 border-b border-gray-800 flex justify-between items-center">
+                    <div class="flex items-center">
+                        <span class="text-xs bg-gray-700 text-gray-300 px-2 py-0.5 rounded font-mono border border-gray-600 flex items-center">
+                            <span class="text-green-400 font-bold mr-2">DFA</span> "${this.testString}"
+                        </span>
+                    </div>
+                    ${resultBadge}
+                </div>
+                <!-- Optional: Add specific transition trace here if available in future -->
+                <div class="p-2 text-[10px] font-mono text-gray-500 italic">
+                    Result via Deterministic Finite Automaton
+                </div>
+            `;
             resultsContainer.insertBefore(resultDiv, resultsContainer.firstChild);
 
         } catch (e) {
@@ -302,28 +311,31 @@ const AppState = {
         document.getElementById('results-panel-empty').style.display = 'none';
 
         const resultDiv = document.createElement('div');
-        resultDiv.className = 'p-3 bg-gray-800 rounded border border-gray-700 mb-2';
+        resultDiv.className = 'bg-gray-800 rounded-lg border border-gray-700 mb-3 overflow-hidden shadow-sm';
 
         try {
             const isMatch = this.wasmModule.Matcher.approximateMatch(text, pattern, k);
 
+            const resultBadge = isMatch
+                ? '<span class="px-2 py-0.5 rounded bg-green-500/20 text-green-400 text-[10px] font-bold border border-green-500/30 tracking-wide">MATCH</span>'
+                : '<span class="px-2 py-0.5 rounded bg-red-500/20 text-red-400 text-[10px] font-bold border border-red-500/30 tracking-wide">NO MATCH</span>';
+
             resultDiv.innerHTML = `
-                <div class="flex justify-between items-center mb-1">
-                    <span class="text-xs font-bold text-blue-400">APPROX MATCH (k=${k})</span>
-                <span class="font-bold border px-2 py-0.5 rounded text-xs ${isMatch ? 'text-green-400 border-green-500/30 bg-green-500/10' : 'text-red-400 border-red-500/30 bg-red-500/10'}">
-                    ${isMatch ? 'MATCH' : 'NO MATCH'}
-                </span>
-            </div>
-                <div class="text-sm text-gray-300">
-                    <div>Text: "${text}"</div>
-                    <div>Pattern: "${pattern}"</div>
+                <div class="px-3 py-2 bg-gray-900 border-b border-gray-800 flex justify-between items-center">
+                    <div class="flex items-center">
+                        <span class="text-xs bg-gray-700 text-gray-300 px-2 py-0.5 rounded font-mono border border-gray-600 flex items-center">
+                            <span class="text-blue-400 font-bold mr-2">APPROX (k=${k})</span> "${text}"
+                        </span>
+                    </div>
+                    ${resultBadge}
                 </div>
+                <div class="p-2 text-[10px] font-mono text-gray-400 whitespace-pre-wrap max-h-32 overflow-y-auto custom-scrollbar">Pattern: "${pattern}"</div>
             `;
             resultsContainer.insertBefore(resultDiv, resultsContainer.firstChild);
 
         } catch (e) {
             console.error(e);
-            resultDiv.innerHTML = `<span class="text-red-500">Error: ${e.message}</span>`;
+            resultDiv.innerHTML = `<span class="text-red-500 p-3">Error: ${e.message}</span>`;
             resultsContainer.insertBefore(resultDiv, resultsContainer.firstChild);
         }
     },
@@ -428,16 +440,18 @@ const AppState = {
             }
 
             const resultBadge = isAccepted
-                ? '<span class="px-2 py-0.5 rounded bg-green-500/20 text-green-400 font-bold border border-green-500/30">ACCEPTED</span>'
-                : '<span class="px-2 py-0.5 rounded bg-red-500/20 text-red-400 font-bold border border-red-500/30">REJECTED</span>';
+                ? '<span class="px-2 py-0.5 rounded bg-green-500/20 text-green-400 text-[10px] font-bold border border-green-500/30 tracking-wide">ACCEPTED</span>'
+                : '<span class="px-2 py-0.5 rounded bg-red-500/20 text-red-400 text-[10px] font-bold border border-red-500/30 tracking-wide">REJECTED</span>';
 
             const resultDiv = document.createElement('div');
-            resultDiv.className = 'bg-gray-800 rounded border border-gray-700 mb-2 overflow-hidden';
+            resultDiv.className = 'bg-gray-800 rounded-lg border border-gray-700 mb-3 overflow-hidden shadow-sm';
             resultDiv.innerHTML = `
                 <div class="px-3 py-2 bg-gray-900 border-b border-gray-800 flex justify-between items-center">
-                    <span class="text-xs bg-gray-700 text-gray-300 px-1.5 rounded font-mono">
-                        <span class="text-orange-400 font-bold mr-2">PDA (${this.pdaMode})</span> "${input}"
-                    </span>
+                    <div class="flex items-center">
+                        <span class="text-xs bg-gray-700 text-gray-300 px-2 py-0.5 rounded font-mono border border-gray-600 flex items-center">
+                            <span class="text-orange-400 font-bold mr-2">PDA (${this.pdaMode})</span> "${input}"
+                        </span>
+                    </div>
                     ${resultBadge}
                 </div>
                 <div class="p-2 text-[10px] font-mono text-gray-400 whitespace-pre-wrap max-h-32 overflow-y-auto custom-scrollbar">${stackTrace}</div>

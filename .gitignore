@@ -1,6 +1,6 @@
 # System files
 .DS_Store
-.vscode/
+.vscode
 
 # Build dependencies
 emsdk/
