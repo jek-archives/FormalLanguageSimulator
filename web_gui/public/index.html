@@ -194,6 +194,10 @@
                                 class="text-xs bg-gray-800 hover:bg-gray-700 px-2 py-1 rounded text-gray-400">abb</button>
                             <button onclick="AppState.setTestString('aabb')"
                                 class="text-xs bg-gray-800 hover:bg-gray-700 px-2 py-1 rounded text-gray-400">aabb</button>
+                            <button onclick="AppState.setRandomTestString()"
+                                class="text-xs bg-purple-900/40 hover:bg-purple-900/60 border border-purple-700/50 px-2 py-1 rounded text-purple-300 flex items-center">
+                                <i class="material-icons text-[10px] mr-1">shuffle</i> Random
+                            </button>
                             <button onclick="AppState.generateExamples()"
                                 class="text-xs bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded text-green-400 flex items-center">
                                 <i class="material-icons text-[10px] mr-1">auto_awesome</i> Suggest
@@ -333,15 +337,25 @@
                                 <i class="material-icons text-gray-500 mr-2 text-sm">list_alt</i> Transitions
                             </h2>
                             <!-- Small Tabs -->
-                            <div class="flex text-[10px] space-x-2">
+                            <div class="flex text-[10px] space-x-2 items-center">
                                 <button id="nfa-log-tab" onclick="AppState.setActiveTab('nfa')"
                                     class="text-blue-400 font-bold">NFA</button>
                                 <span class="text-gray-700">|</span>
                                 <button id="dfa-log-tab" onclick="AppState.setActiveTab('dfa')"
                                     class="text-gray-500 hover:text-gray-300">DFA</button>
                                 <span class="text-gray-700">|</span>
-                                <button id="grammar-log-tab" onclick="AppState.setActiveTab('grammar')"
-                                    class="text-gray-500 hover:text-gray-300">GRAMMAR</button>
+                                <div class="relative group flex items-center">
+                                    <button id="grammar-log-tab" onclick="AppState.setActiveTab('grammar')"
+                                        class="text-gray-500 hover:text-gray-300">GRAMMAR</button>
+                                    <i
+                                        class="material-icons text-[10px] text-gray-600 ml-1 cursor-help hover:text-gray-400">help_outline</i>
+                                    <div
+                                        class="absolute bottom-full right-0 mb-2 w-48 bg-black/90 text-gray-300 text-[10px] p-2 rounded shadow-xl border border-gray-700 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
+                                        <p class="font-bold text-white mb-1">Regular Grammar</p>
+                                        Generates production rules based on whichever <b>Diagram (NFA/DFA)</b> is
+                                        currently active above.
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -376,9 +390,15 @@
 
                     <!-- Test Results Panel -->
                     <div class="bg-gray-900 border border-gray-800 rounded-xl shadow-lg p-5 h-80 flex flex-col">
-                        <div class="flex items-center mb-4">
-                            <i class="material-icons text-gray-500 mr-2 text-sm">history</i>
-                            <h2 class="font-bold text-gray-200">Execution Log</h2>
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="flex items-center">
+                                <i class="material-icons text-gray-500 mr-2 text-sm">history</i>
+                                <h2 class="font-bold text-gray-200">Execution Log</h2>
+                            </div>
+                            <button onclick="AppState.clearLogs()"
+                                class="text-[10px] text-gray-500 hover:text-red-400 bg-gray-800 hover:bg-gray-700 px-2 py-1 rounded border border-gray-700 transition-colors uppercase font-bold tracking-wider">
+                                Clear
+                            </button>
                         </div>
 
                         <div id="results-panel-empty"

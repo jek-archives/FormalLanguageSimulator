@@ -365,14 +365,94 @@ const AppState = {
         }
     },
 
+    // --- Bioinformatics Helpers ---
+
+    generateRandomDNA: function (length) {
+        const chars = "ACGT";
+        let result = "";
+        for (let i = 0; i < length; i++) {
+            result += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return result;
+    },
+
+    injectPattern: function (background, pattern, errorRate = 0.0) {
+        // Simple injection at random position
+        const pos = Math.floor(Math.random() * (background.length - pattern.length));
+        let seq = background.split('');
+
+        // Mutate pattern?
+        let finalPattern = pattern;
+        if (Math.random() < errorRate) {
+            // Introduce one mutation
+            const mutPos = Math.floor(Math.random() * pattern.length);
+            const chars = "ACGT";
+            const original = pattern[mutPos];
+            let replacement = chars.charAt(Math.floor(Math.random() * chars.length));
+            while (replacement === original) {
+                replacement = chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            finalPattern = pattern.substring(0, mutPos) + replacement + pattern.substring(mutPos + 1);
+        }
+
+        // Overlay
+        for (let i = 0; i < finalPattern.length; i++) {
+            if (pos + i < seq.length) {
+                seq[pos + i] = finalPattern[i];
+            }
+        }
+        return seq.join('');
+    },
+
     setBioPreset: function (type) {
         let pattern = "";
-        if (type === 'START') pattern = 'ATG'; // Start Codon
-        if (type === 'TATA') pattern = 'TATA(A|T)A(A|T)'; // TATA Box (Promoter)
-        if (type === 'POLYA') pattern = 'AAAA*'; // Poly-A Tail
+        let text = "";
+
+        // Generate random background noise (shorter now, ~12 chars)
+        const bg = this.generateRandomDNA(12);
+
+        if (type === 'START') {
+            pattern = 'ATG';
+            text = this.injectPattern(bg, 'ATG', 0.1);
+        }
+        if (type === 'TATA') {
+            pattern = 'TATA(A|T)A(A|T)';
+            const sample = 'TATAAAA';
+            text = this.injectPattern(bg, sample, 0.2);
+        }
+        if (type === 'POLYA') {
+            pattern = 'AAAA*';
+            const sample = 'AAAAAAAA';
+            text = this.injectPattern(bg, sample, 0.2);
+        }
 
         this.handleRegexChange(pattern);
+        this.handleDnaSequenceChange(text);
+
         document.getElementById('regex-input-field').value = pattern;
+        document.getElementById('dna-sequence-field').value = text;
+
+        // Auto-run
+        setTimeout(() => this.runApproximateMatch(), 100);
+    },
+
+    setRandomTestString: function () {
+        // Extract potential literals from regex
+        // Simple heuristic: remove special chars
+        const literals = this.regex.replace(/[^a-zA-Z0-9]/g, '');
+        const distinctChars = [...new Set(literals.split(''))];
+
+        // Default to a,b if no literals found (e.g. if regex is just '.*')
+        const alphabet = distinctChars.length > 0 ? distinctChars.join('') : "ab";
+
+        // Generate random string (length 5 to 10)
+        const len = Math.floor(Math.random() * 6) + 5;
+        let result = "";
+        for (let i = 0; i < len; i++) {
+            result += alphabet.charAt(Math.floor(Math.random() * alphabet.length));
+        }
+
+        this.setTestString(result);
     },
 
     runPdaSimulation: function () {
@@ -817,6 +897,12 @@ const AppState = {
         const el = document.getElementById('error-container');
         document.getElementById('error-message-text').innerText = msg;
         el.style.display = 'block';
+    },
+
+    clearLogs: function () {
+        document.getElementById('test-results-content').innerHTML = '';
+        document.getElementById('test-results-content').style.display = 'none';
+        document.getElementById('results-panel-empty').style.display = 'block';
     },
 
     reset: function () {
