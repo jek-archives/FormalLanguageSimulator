@@ -13,7 +13,9 @@
 **A:** "State Explosion. In the worst case, the number of DFA states can be $2^n$ (exponential) relative to the NFA. For complex regular expressions, the DFA might use too much memory."
 
 **Q: Why is `a^n b^n` or Balanced Parentheses NOT a Regular Language?**
-**A:** "Because Finite Automata have limited memory (finite states). They cannot 'count' to infinity to ensure the number of $a$'s matches the number of $b$'s. A Pushdown Automaton (PDA) solves this by adding a **Stack** (infinite memory)."
+**A:** "Because Finite Automata have limited memory (finite states). They cannot 'count' to infinity to ensure the number of $a$'s matches the number of $b$'s.
+*   **Analogy:** It's like trying to pair socks without a basket—you need a place to hold them.
+*   **RNA Context:** In biology, this validates **Dot-Bracket Notation** (`((...))`). The PDA's **Stack** 'remembers' the opening bases to ensure they are properly closed by a matching base later in the sequence."
 
 ---
 
@@ -50,3 +52,28 @@
 *   **$\epsilon$-transition:** Moving to a new state without consuming any input character.
 *   **Alphabet ($\Sigma$):** The set of allowed symbols (e.g., $\{a, b\}$ or $\{A, C, G, T\}$).
 *   **Trap State:** A non-final state from which you can never escape (used in DFAs for invalid inputs).
+
+---
+
+## 💀 DEAN / HARD MODE QUESTIONS (Technical & Limits)
+
+**Q: "This is nice for a toy example. But if I give you a 4GB FASTA file (Human Genome), your browser will crash. How do you handle REAL scale?"**
+**A:** "You are absolutely correct. My current implementation loads the entire string into RAM for the Levenshtein Matrix ($O(m*n)$ space).
+*   **The Problem:** A 4GB string $\times$ 100-char pattern = 400GB matrix. Crash.
+*   **The Solution:** For production, I would not use dynamic programming. I would use **BLAST (Basic Local Alignment Search Tool)** heuristics or verify matches using **Bit-Parallelism (Myers' Algorithm)** which packs rows into 64-bit integers, speeding it up by 64x and reducing memory drastically."
+
+**Q: "Your PDA validates parentheses. But real XML has tags like `<foo>` and `</foo>`. A PDA can't match arbitrary strings on the stack, only symbols. How do you explain that?"**
+**A:** "That is a subtle but excellent point. A pure theoretical PDA pushes single symbols. To validate XML tags:
+1.  We need a **Lexer** first to tokenize `<foo>` into a symbol like `A` and `</foo>` into `A'`.
+2.  Then the PDA checks the structure `A A'`.
+3.  Without a Lexer, checking if string $w$ matches string $w^R$ (reversal) over an infinite alphabet is actually harder, but for a known set of tags, tokenization maps it back to the Context-Free problem I demonstrated."
+
+**Q: "Show me a case where your Levenshtein algorithm fails or gives a 'wrong' biological answer."**
+**A:** "The Levenshtein algorithm strictly minimizes *edits*. It treats a Transition ($A \leftrightarrow G$) the same cost as a Transversion ($A \leftrightarrow T$). In real biology, Transitions are much more common. My engine would say they are equal distance, but a biologist would say the Transition is a 'better' match. To fix this, I would need a **Weighted Scoring Matrix** (like BLOSUM62) instead of simple +1 cost."
+
+**Q: "What is the Time Complexity of your Regex Engine? Can I ReDoS (Regex Denial of Service) it?"**
+**A:** "Actually, **NO**, you cannot ReDoS my engine!
+*   **My Engine:** Uses **Thompson's Construction**, which guarantees simulation in $O(m \times n)$ time (where $m$ is regex length, $n$ is string length). It is immune to catastrophic backtracking."
+
+**Q: "Can I type actual XML tags like `<div>` instead of just `(`?"**
+**A:** "In this demo, we map tags to parentheses abstractly: `<tag>` becomes `(` and `</tag>` becomes `)`. To support raw XML text, I would simply add a **Lexer** (Tokenizer) step before the PDA to convert the string `<div class='foo'>` into a single token `OPEN_TAG`. The underlying PDA logic remains exactly the same."

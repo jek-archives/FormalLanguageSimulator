@@ -360,8 +360,8 @@ const AppState = {
             desc.innerHTML = `Simulates <b>a<sup>n</sup>b<sup>n</sup></b> context-free language.`;
             document.getElementById('pda-input-field').placeholder = "e.g. aaabbb";
         } else {
-            desc.innerHTML = `Checks for <b>Balanced Parentheses</b> (XML/RNA Structure).`;
-            document.getElementById('pda-input-field').placeholder = "e.g. ((()))";
+            desc.innerHTML = `Checks for <b>XML Tags / RNA Loops</b> (Balanced Parentheses).`;
+            document.getElementById('pda-input-field').placeholder = "e.g. ((...))";
         }
     },
 
@@ -416,12 +416,14 @@ const AppState = {
             text = this.injectPattern(bg, 'ATG', 0.1);
         }
         if (type === 'TATA') {
-            pattern = 'TATA(A|T)A(A|T)';
+            // Use a canonical consensus sequence for the pattern since Matcher uses Levenshtein on literals
+            pattern = 'TATAAAA';
             const sample = 'TATAAAA';
             text = this.injectPattern(bg, sample, 0.2);
         }
         if (type === 'POLYA') {
-            pattern = 'AAAA*';
+            // Use a literal string for approximate matching, not regex
+            pattern = 'AAAAAAAA';
             const sample = 'AAAAAAAA';
             text = this.injectPattern(bg, sample, 0.2);
         }
@@ -456,7 +458,7 @@ const AppState = {
     },
 
     runPdaSimulation: function () {
-        const input = this.pdaInput || "";
+        let input = this.pdaInput || "";
         // Redirect to Main Execution Log
         const resultsContainer = document.getElementById('test-results-content');
         resultsContainer.style.display = 'block';
@@ -474,6 +476,25 @@ const AppState = {
                 let failed = false;
 
                 trace.push(`Start: Stack []`);
+
+                // --- LEXER IMPL (XML -> Parens) ---
+                if (input.includes('<') && input.includes('>')) {
+                    trace.push(`Lexer: Detected XML tags.`);
+                    // 1. Remove self-closing tags (e.g. <br/>) - they don't affect balance
+                    let tokenized = input.replace(/<[^>]+\/>/g, '');
+                    // 2. Replace closing tags </any> with ')'
+                    tokenized = tokenized.replace(/<\/[^>]+>/g, ')');
+                    // 3. Replace opening tags <any> with '('
+                    tokenized = tokenized.replace(/<[^>]+>/g, '(');
+
+                    if (tokenized !== input) {
+                        trace.push(`Lexer: Tokenized "${input}" -> "${tokenized}"`);
+                        // Use the tokenized string for simulation, but filter to just ( and ) to be safe from non-tag text?
+                        // Actually the loop below ignores non-parens, so 'tokenized' containing garbage text is fine.
+                        input = tokenized;
+                    }
+                }
+                // ----------------------------------
 
                 for (let i = 0; i < input.length; i++) {
                     const char = input[i];

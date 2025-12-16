@@ -41,10 +41,10 @@
 ## 3. DNA Sequence Analysis (Requirement: Approximate Matching)
 **Do:**
 1. Scroll to the **"Approximate Match"** card (Left Column).
-2. Click the **"Start Codon"** preset (if available) or type `ATG`.
-3. Set **Max Errors (k)** to `1`.
-4. Type a DNA sequence like `GAT TG AAC` in the input field.
-5. Click **"Run Match"**.
+3. Click the **"TATA Box"** preset (under Bioinformatics).
+4. *Alternatively*, type `TATAAAA` in the Regex field and `CCGGTATAAAAGGC` in the search field.
+5. Set **Max Errors (k)** to `1`.
+6. Click **"Run Match (Levenshtein)"**.
 
 **Say:**
 > "Moving to Bioinformatics, exact matching isn't always enough due to mutations. 
@@ -60,9 +60,9 @@
 4. Click **Play** (Run).
 
 **Say:**
-> "Finally, we address structural analysis, such as validating XML documents or RNA hairpins. 
-> Regular grammars cannot handle nested structures. For this, we implemented a **Pushdown Automaton (PDA)**.
-> This simulation uses a stack to validate balanced delimiters, demonstrating the power of Context-Free Languages where simple Finite Automata fail."
+> "Finally, we address structural analysis. This corresponds to Topic 3's requirement for XML validation or **RNA Secondary Structure Prediction**.
+> Regular grammars cannot handle nested structures (like loops inside loops). 
+> We implemented a **Pushdown Automaton (PDA)** which uses a **Stack** to validate 'Balanced Parentheses'—this is exactly how biologists represent RNA folding using **Dot-Bracket Notation** (`((...))`)."
 
 ---
 

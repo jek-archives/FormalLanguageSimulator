@@ -1,22 +1,15 @@
 #!/bin/bash
-cd "$(dirname "$0")"
 
-# Define the port
-PORT=8000
-URL="http://localhost:$PORT/web_gui/public/"
+# Navigate to the correct directory
+cd "$(dirname "$0")/web_gui/public"
 
-echo "=================================================="
-echo "   Formal Language Simulator - Quick Launcher"
-echo "=================================================="
-echo "Starting local server at port $PORT..."
-echo "Opening $URL in your default browser..."
-echo "--------------------------------------------------"
-echo "Keep this window open while using the simulator."
-echo "Close this window to stop the server."
-echo "=================================================="
+# Kill any existing process on port 8000
+lsof -ti:8000 | xargs kill -9 2>/dev/null
 
-# Open the browser in the background after 1 second
-(sleep 1 && open "$URL") &
+# Open the browser
+open http://localhost:8000
 
-# Start the Python HTTP server
-python3 -m http.server $PORT
+# Start the server
+echo "Starting server at http://localhost:8000"
+echo "Press Ctrl+C to stop"
+python3 -m http.server 8000
