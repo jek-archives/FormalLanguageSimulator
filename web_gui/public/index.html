@@ -257,8 +257,20 @@
                         </select>
                     </div>
 
-                    <p id="pda-desc" class="text-xs text-gray-500 mb-3">Matches 'a' followed by equal number of 'b's.
+                    <p id="pda-desc" class="text-xs text-gray-500 mb-2">Matches 'a' followed by equal number of 'b's.
                     </p>
+
+                    <!-- Quick Presets -->
+                    <div id="pda-presets" class="flex gap-2 mb-2 hidden">
+                        <button onclick="AppState.setPdaInput('((...))')"
+                            class="px-2 py-1 bg-gray-800 border border-gray-700 hover:border-orange-500/50 text-[10px] text-gray-400 rounded transition-colors">RNA
+                            (...)
+                        </button>
+                        <button onclick="AppState.setPdaInput('<book><title></title></book>')"
+                            class="px-2 py-1 bg-gray-800 border border-gray-700 hover:border-orange-500/50 text-[10px] text-gray-400 rounded transition-colors">XML
+                            &lt;book&gt;
+                        </button>
+                    </div>
 
                     <div class="flex space-x-2">
                         <input type="text" id="pda-input-field" value="aaabbb"

@@ -62,7 +62,10 @@
 **Say:**
 > "Finally, we address structural analysis. This corresponds to Topic 3's requirement for XML validation or **RNA Secondary Structure Prediction**.
 > Regular grammars cannot handle nested structures (like loops inside loops). 
-> We implemented a **Pushdown Automaton (PDA)** which uses a **Stack** to validate 'Balanced Parentheses'—this is exactly how biologists represent RNA folding using **Dot-Bracket Notation** (`((...))`)."
+> We implemented a **Pushdown Automaton (PDA)** which uses a **Stack** to validate 'Balanced Parentheses'.
+>
+> *   **Why Parentheses?** In biology, this is called **Dot-Bracket Notation**. An opening `(` is a base pair start, and `)` is the end. A dot `.` is an unpaired loop.
+> *   **Input:** Note that we input the *structure* (e.g., `((...))`) to validate its stability. We do not input the raw sequence (e.g., `AAAGGG`) because predicting the fold itself is an $O(n^3)$ problem, whereas *validating* a known fold is a linear Context-Free problem suitable for a PDA."
 
 ---
 

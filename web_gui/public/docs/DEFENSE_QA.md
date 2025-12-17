@@ -77,3 +77,31 @@
 
 **Q: "Can I type actual XML tags like `<div>` instead of just `(`?"**
 **A:** "In this demo, we map tags to parentheses abstractly: `<tag>` becomes `(` and `</tag>` becomes `)`. To support raw XML text, I would simply add a **Lexer** (Tokenizer) step before the PDA to convert the string `<div class='foo'>` into a single token `OPEN_TAG`. The underlying PDA logic remains exactly the same."
+
+---
+
+## 📚 Deep Dive: Pushdown Automata (PDA)
+
+**Q: "I see you have two PDA modes. Why is the ^n b^n$ mode in C++ but the XML mode in JavaScript?"**
+**A:** "A keen observation. I designed it this way to demonstrate two different architectural approaches:
+1.  **Strict Performance (^n b^n$):** The C++ backend implements a rigorous, symbol-by-symbol PDA. This is ideal for millions of operations where every CPU cycle counts.
+2.  **Practical Application (XML):** The XML validator requires *tokenization* (converting `<tag>` to tokens) before the PDA logic. Doing this in JavaScript allows for immediate, responsive user feedback in the UI without the overhead of round-tripping strings to WebAssembly for simple text transformation."
+
+**Q: "Why can't I just use a simple integer counter to validate parentheses? Why do I need a stack?"**
+**A:** "If we only had one type of parenthesis `(`, a counter would suffice (Increment on `(`, Decrement on `)`).
+*   **HOWEVER:** As soon as we introduce multiple types (like `[]` and `()`), a counter fails. `([)]` would pass a counter check (1 open `(`, 1 open `[`, then closed both), but it is structurally invalid.
+*   A **Stack** enforces *order*: The last item opened MUST be the first item closed (LIFO), which is mathematically required for Context-Free Languages."
+
+**Q: "Walk me through the error states. How does the PDA know *exactly* why it failed?"**
+**A:** "There are three distinct failure modes my simulation detects:
+1.  **Mismatch Error:** We read a closing character `)` but the top of the stack matches a different type (e.g., `[`). *Immediate Reject.*
+2.  **Empty Stack Error:** We read a closing character `)` but the stack is already empty. *Means: Too many closing tags.*
+3.  **Input Consumed Error:** We finished reading the input, but the stack is NOT empty. *Means: Unclosed tags remaining.*"
+
+**Q: "Is HTML a Context-Free Language? Can your PDA validate it?"**
+**A:** "Strictly speaking, **No**. HTML5 is Context-Sensitive (and messy!) because of features like 'void tags' (<br> has no closing tag) and forgiving parsing rules.
+*   **However:** My PDA perfectly validates **XHTML** or strictly-formed XML, which *is* a Context-Free Language because every tag must be strictly nested."
+
+**Q: "Why do I have to type structure like `((...))`? Why can't I just type `CCCAAAGGG` and have you tell me the folding?"**
+**A:** "That would require strictly *predicting* the fold, which is the **RNA Folding Problem** (solved by the Nussinov Algorithm using (n^3)$ dynamic programming).
+*   **Our Scope:** This project demonstrates **Automata Theory**. A PDA is inherently a *Validator*, not an optimization solver. Its job is to take a proposed structure (dot-bracket notation) and verify if it is topologically possible (i.e., balanced and context-free)."

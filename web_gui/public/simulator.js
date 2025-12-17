@@ -477,50 +477,127 @@ const AppState = {
 
                 trace.push(`Start: Stack []`);
 
-                // --- LEXER IMPL (XML -> Parens) ---
+                // --- LEXER & SIMULATION LOGIC ---
+                let isXML = false;
+
+                // Detect XML-like input (must have tags)
                 if (input.includes('<') && input.includes('>')) {
-                    trace.push(`Lexer: Detected XML tags.`);
-                    // 1. Remove self-closing tags (e.g. <br/>) - they don't affect balance
-                    let tokenized = input.replace(/<[^>]+\/>/g, '');
-                    // 2. Replace closing tags </any> with ')'
-                    tokenized = tokenized.replace(/<\/[^>]+>/g, ')');
-                    // 3. Replace opening tags <any> with '('
-                    tokenized = tokenized.replace(/<[^>]+>/g, '(');
-
-                    if (tokenized !== input) {
-                        trace.push(`Lexer: Tokenized "${input}" -> "${tokenized}"`);
-                        // Use the tokenized string for simulation, but filter to just ( and ) to be safe from non-tag text?
-                        // Actually the loop below ignores non-parens, so 'tokenized' containing garbage text is fine.
-                        input = tokenized;
-                    }
+                    isXML = true;
                 }
-                // ----------------------------------
 
-                for (let i = 0; i < input.length; i++) {
-                    const char = input[i];
-                    if (char === '(') {
-                        stack.push('(');
-                        trace.push(`Read '(': Push '('. Stack: [${stack.join('')}]`);
-                    } else if (char === ')') {
-                        if (stack.length === 0) {
-                            trace.push(`Read ')': Error (Empty Stack). REJECT.`);
-                            failed = true;
-                            break;
+                if (isXML) {
+                    // --- XML STRICT MODE ---
+                    trace.push(`Lexer: XML detected. Running strict tag validation...`);
+
+                    // Regex to find tags: Capture group 1 is '/' (if closing), group 2 is 'tagName'
+                    // We ignore attributes for validation: <div class="x"> -> div
+                    const tagRegex = /<(\/?)([^>\s\/]+)[^>]*>/g;
+                    let match;
+                    let foundTags = false;
+
+                    // We will iterate purely over the tags found. Text content is ignored for structure.
+                    while ((match = tagRegex.exec(input)) !== null) {
+                        foundTags = true;
+                        const fullTag = match[0]; // e.g. <title>
+                        const isClose = match[1] === '/';
+                        const tagName = match[2];
+
+                        // Skip self-closing tags? Usually XML parsers handle <br/>.
+                        // Our regex might match <br/> as tagName="br". 
+                        // If the tag ends with /> it's self closing. match[0] ends with />?
+                        if (fullTag.trim().endsWith('/>')) {
+                            trace.push(`Read '${fullTag}': Self-closing. Ignore.`);
+                            continue;
                         }
-                        stack.pop();
-                        trace.push(`Read ')': Pop '('. Stack: [${stack.join('')}]`);
-                    } else {
-                        trace.push(`Read '${char}': Ignore/Skip.`);
+
+                        if (!isClose) {
+                            // OPEN TAG
+                            stack.push({ name: tagName, raw: fullTag });
+                            trace.push(
+                                `<span class="text-gray-500">Read</span> <span class="text-blue-400 font-bold">&lt;${tagName}&gt;</span>: ` +
+                                `<span class="px-1.5 py-0.5 bg-green-900/40 text-green-400 rounded text-[9px] uppercase font-bold tracking-wider border border-green-700/50">PUSH</span> ` +
+                                `<span class="text-gray-400">Stack size: ${stack.length}</span>`
+                            );
+                        } else {
+                            // CLOSE TAG
+                            if (stack.length === 0) {
+                                trace.push(
+                                    `<span class="text-gray-500">Read</span> <span class="text-blue-400 font-bold">&lt;/${tagName}&gt;</span>: ` +
+                                    `<span class="px-1.5 py-0.5 bg-red-900/40 text-red-400 rounded text-[9px] uppercase font-bold tracking-wider border border-red-700/50">ERROR</span> ` +
+                                    `<span class="text-red-300">Empty Stack</span>`
+                                );
+                                failed = true;
+                                break;
+                            }
+
+                            const top = stack.pop();
+
+                            // STRICT NAME CHECK
+                            if (top.name !== tagName) {
+                                trace.push(
+                                    `<span class="text-gray-500">Read</span> <span class="text-blue-400 font-bold">&lt;/${tagName}&gt;</span>: ` +
+                                    `<span class="px-1.5 py-0.5 bg-red-900/40 text-red-400 rounded text-[9px] uppercase font-bold tracking-wider border border-red-700/50">MISMATCH</span> ` +
+                                    `<span class="text-red-300">Expected &lt;/${top.name}&gt;</span>`
+                                );
+                                failed = true;
+                                break;
+                            }
+
+                            trace.push(
+                                `<span class="text-gray-500">Read</span> <span class="text-blue-400 font-bold">&lt;/${tagName}&gt;</span>: ` +
+                                `<span class="px-1.5 py-0.5 bg-yellow-900/40 text-yellow-400 rounded text-[9px] uppercase font-bold tracking-wider border border-yellow-700/50">POP</span> ` +
+                                `<span class="text-gray-400">Matches &lt;${top.name}&gt;</span>`
+                            );
+                        }
+                    }
+
+                    if (!foundTags) {
+                        trace.push(`<span class="text-yellow-500 italic">Warning: No valid tags found in XML mode.</span>`);
+                    }
+
+                } else {
+                    // --- STANDARD / RNA MODE (Char-by-Char) ---
+                    for (let i = 0; i < input.length; i++) {
+                        const char = input[i];
+                        if (char === '(') {
+                            // Push index to check loop size later
+                            stack.push(i);
+                            trace.push(`Read '(': Push (Index ${i}). Stack size: ${stack.length}`);
+                        } else if (char === ')') {
+                            if (stack.length === 0) {
+                                trace.push(`Read ')': Error (Empty Stack). REJECT.`);
+                                failed = true;
+                                break;
+                            }
+                            const openIndex = stack.pop();
+                            const loopSize = i - openIndex - 1;
+
+                            // BIO-CONSTRAINT: Hairpin loops must be at least 3 bases long.
+                            if (loopSize < 3) {
+                                trace.push(`Read ')': Error (Steric Hindrance). Loop size ${loopSize} < 3. REJECT.`);
+                                failed = true;
+                                break;
+                            }
+
+                            trace.push(`Read ')': Pop (matches index ${openIndex}). Loop size: ${loopSize}. OK.`);
+                        } else {
+                            trace.push(`Read '${char}': Unpaired base.`);
+                        }
                     }
                 }
 
                 if (!failed && stack.length === 0) {
                     isAccepted = true;
-                    trace.push(`End: Stack Empty. ACCEPT.`);
+                    trace.push(`<span class="text-green-400 font-bold">End: Stack Empty. Structure Valid. ACCEPT.</span>`);
                 } else if (!failed) {
-                    trace.push(`End: Stack [${stack.join('')}] (Not Empty). REJECT.`);
+                    trace.push(`<span class="text-red-400 font-bold">End: Stack [${stack.length} items] (Not Empty). REJECT.</span>`);
                 }
 
+                // If trace contains HTML, we shouldn't join with \n but use <br> or just let innerHTML handle divs? 
+                // The container handles whitespace-pre-wrap, so \n is fine, but we are injecting HTML spans now.
+                // We must ensure the DISPLAY uses innerHTML.
+                // Looking at line 558: resultDiv.innerHTML = ... ${stackTrace} ...
+                // So yes, we can inject HTML spans. Join with \n is OK for pre-wrap.
                 stackTrace = trace.join('\n');
 
             } else {
@@ -905,6 +982,35 @@ const AppState = {
         // Actually, labels are usually letters. 
 
         return dot.replace(/\b(\d+)\b/g, 'q$1');
+    },
+
+    setPdaMode(mode) {
+        this.pdaMode = mode;
+        const desc = document.getElementById('pda-desc');
+        const field = document.getElementById('pda-input-field');
+        const presets = document.getElementById('pda-presets');
+
+        if (mode === 'anbn') {
+            desc.textContent = "Matches 'a' followed by equal number of 'b's.";
+            field.value = "aaabbb";
+            field.placeholder = "e.g. aaabbb";
+            if (presets) presets.classList.add('hidden');
+        } else {
+            desc.textContent = "Validates balanced parentheses (RNA) or nested XML tags.";
+            field.value = "((...))";
+            field.placeholder = "e.g. ((...)) or <tag>...</tag>";
+            if (presets) presets.classList.remove('hidden');
+        }
+
+        // clear previous results
+        document.getElementById('pda-results-content').innerHTML = '';
+        document.getElementById('pda-results-content').style.display = 'none';
+        document.getElementById('pda-results-empty').classList.add('hidden');
+    },
+
+    setPdaInput: function (val) {
+        const field = document.getElementById('pda-input-field');
+        if (field) field.value = val;
     },
 
     clearError: function () {
