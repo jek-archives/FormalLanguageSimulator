@@ -10,14 +10,6 @@ bool Matcher::approximateMatch(const std::string &text,
   int n = text.size();
   int m = pattern.size();
 
-  // DP table: dp[i][j] = min edits to match pattern[0..j-1] with text ending at
-  // i Note: Standard Levenshtein is for full string. For substring search, we
-  // initialize first row to 0. However, the requirement says "Approximate
-  // Pattern Matching", usually implying substring search. But the previous
-  // implementation was: for (int j = 0; j <= m; j++) dp[0][j] = j; for (int i =
-  // 1; i <= n; i++) dp[i][0] = 0; This looks like it allows starting anywhere
-  // in text (cost 0) but must match full pattern.
-
   std::vector<std::vector<int>> dp(n + 1, std::vector<int>(m + 1));
 
   for (int j = 0; j <= m; j++) {
